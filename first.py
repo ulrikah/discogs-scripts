@@ -1,14 +1,11 @@
 '''
 1. Hent alle links fra label 
 
-2. Legg til i txt-fil
-
-3. Display i HTML-fil
+2. Display i HTML-fil
 
 '''
 
-
-
+import sys
 import discogs_client
 import requests
 import re 	#regex
@@ -18,30 +15,23 @@ import time
 
 d = discogs_client.Client('YoutubeURLFromLabel/0.1')
 
-# pattern to recognize youtube URLs
 def getReleaseIdsFromLabel(labelId):
-	
 	label = d.label(labelId)
 	releases = []
 	for rel in label.releases:
-		#do something
 		releases.append(rel.id)
-
 	return releases
 
 
 def getReleaseTitleFromLabel(labelId):
-	
 	label = d.label(labelId)
 	releases = []
 	for rel in label.releases:
-		#do something
 		releases.append(rel.title)
-
 	return releases
 
 
-# find all links in html
+# find all links in the html
 def getURLFromRelease(id):
 	r = requests.get('https://www.discogs.com/release/' + str(id))
 	html = r.text
@@ -52,15 +42,42 @@ def getURLFromRelease(id):
 	j = json.loads(txt)
 	urls = []
 	for video in j['videos/macro:playlist']:
-		urls.append(video['file'])
+		urls.append(video['file'].split('?v=')[1])
 	return urls
 
-if __name__ == '__main__':
-	releases = getReleaseIdsFromLabel(321228)
-	print(releases)
-	allUrls = []
-	for release in releases:
-		allUrls.append(getURLFromRelease(release))
+# output the youtube links to actual html
+# input is expected as a 2d array
+def embedUrls(urls):
+	f = open("output.html", "w")
+	html_str = """
+	<!doctype html>
+	<html>
+		<head> </head>
+		<body>
+	"""
+	for url in urls:
+		for link in url:
+			html_str += "<iframe width=\"420\" height=\"315\" src=\"https://www.youtube.com/embed/" + link + "\"> </iframe>"
+	html_str += """
+		</body>
+	</html>
+	"""
+	f.write(html_str)
+	print("Succesfully wrote to output.html")
+	f.close()
 
-	print(allUrls)
+if __name__ == '__main__':
+	i = int(sys.argv[1])
+	releases = getReleaseIdsFromLabel(i)
+	print(releases)
+	urls = []
+	for release in releases:
+		try:
+			urls.append(getURLFromRelease(release))
+			print("Fetched urls from release nr. " + str(release))
+		except AttributeError as e:
+			print("Release nr. " + str(release) + " failed")
+	print(urls)
+	embedUrls(urls)
+
 
